@@ -2,7 +2,7 @@
 const OpenAI = require("openai");
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-async function searchRegionsLLM(userKeyword, { lang = "ja", limit = 10, model = "gpt-5-mini" } = {}) {
+async function searchRegionsLLM(userKeyword, { lang = "ja", limit = 10, model = "gpt-5" } = {}) {
   const schema = {
     type: "object",
     properties: {
@@ -37,7 +37,7 @@ async function searchRegionsLLM(userKeyword, { lang = "ja", limit = 10, model = 
       { role: "system", content: `あなたは日本の地名検索エージェントです。候補は最大${limit}件。返答はJSONのみ。` },
       { role: "user", content: `言語:${lang}\n地名キーワード:${userKeyword}\n出力はJSONのみ。` }
     ],
-    temperature: 0.3
+   
   });
 
   const content = res.choices?.[0]?.message?.content?.trim() || "{}";
