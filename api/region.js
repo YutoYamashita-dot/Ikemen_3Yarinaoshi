@@ -1,7 +1,7 @@
 // api/region.js
 const express = require('express');
 const router = express.Router();
-const { searchRegionsLLM } = require('../lib/llm');
+const { searchRegionsLLM } = require('./lib/llm');
 
 // ★ ここは「/」で定義すること（/api/region は server.js 側で付く）
 router.get('/', async (req, res) => {
