@@ -1,24 +1,18 @@
 // api/lib/llm.js
 const OpenAI = require("openai");
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// ─────────────────────────────────────────────
-// OpenAIクライアント
-// ─────────────────────────────────────────────
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-// ─────────────────────────────────────────────
-// 地域検索（ChatGPT-5 API 版）
-// ─────────────────────────────────────────────
 async function searchRegionsLLM(
   userKeyword,
   { lang = "ja", limit = 10, model = "gpt-5-mini" } = {}
 ) {
-  // GPT-5 Structured Outputs 用のJSONスキーマ
+  // ─────────────────────────────────────────────
+  // Structured Outputs 用スキーマ（OpenAI v2 仕様準拠）
+  // ─────────────────────────────────────────────
   const schema = {
     type: "object",
     additionalProperties: false,
+    required: ["input", "normalized", "candidates"],
     properties: {
       input: { type: "string" },
       normalized: { type: "string" },
@@ -27,6 +21,16 @@ async function searchRegionsLLM(
         items: {
           type: "object",
           additionalProperties: false,
+          required: [
+            "name",
+            "type",
+            "prefecture",
+            "municipality_code",
+            "aliases",
+            "latitude",
+            "longitude",
+            "score"
+          ],
           properties: {
             name: { type: "string" },
             type: {
@@ -35,21 +39,24 @@ async function searchRegionsLLM(
             },
             prefecture: { type: "string" },
             municipality_code: { type: "string" },
-            aliases: { type: "array", items: { type: "string" } },
+            aliases: {
+              type: "array",
+              items: { type: "string" },
+            },
             latitude: { type: "number" },
             longitude: { type: "number" },
             score: { type: "number", minimum: 0, maximum: 1 },
           },
-          required: ["name", "type", "score"],
         },
       },
     },
-    required: ["input", "normalized", "candidates"],
   };
 
-  // GPT-5呼び出し
+  // ─────────────────────────────────────────────
+  // ChatGPT-5 API 呼び出し
+  // ─────────────────────────────────────────────
   const res = await client.chat.completions.create({
-    model, // 例: gpt-5 または gpt-5-mini
+    model,
     response_format: {
       type: "json_schema",
       json_schema: { name: "RegionSearch", schema, strict: true },
@@ -57,7 +64,7 @@ async function searchRegionsLLM(
     messages: [
       {
         role: "system",
-        content: `あなたは日本の地名検索エージェントです。候補は最大${limit}件。返答はJSONのみ。`,
+        content: `あなたは日本の地名検索エージェントです。曖昧な地名を解釈し、候補を最大${limit}件JSONで返してください。`,
       },
       {
         role: "user",
@@ -66,7 +73,6 @@ async function searchRegionsLLM(
     ],
   });
 
-  // 応答の整形
   const content = res.choices?.[0]?.message?.content?.trim() || "{}";
   try {
     const json = JSON.parse(content);
@@ -79,8 +85,4 @@ async function searchRegionsLLM(
   }
 }
 
-// ─────────────────────────────────────────────
-// CommonJS 形式でエクスポート
-// ─────────────────────────────────────────────
 module.exports = { searchRegionsLLM };
-
